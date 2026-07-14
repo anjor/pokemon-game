@@ -331,6 +331,45 @@
   #player-box.faint img { animation: faint-flip .8s ease forwards; }
   @keyframes faint-flip { to { transform: scaleX(-1) translateY(60px); opacity: 0; } }
 
+  /* Terastallization */
+  .combatant.tera img { animation: tera-glow 1.6s ease-in-out infinite alternate; }
+  @keyframes tera-glow {
+    from { filter: saturate(1.4) drop-shadow(0 0 8px #7df9ff); }
+    to   { filter: saturate(1.8) drop-shadow(0 0 22px #b388ff); }
+  }
+  #player-box.tera-in img { animation: tera-flash .9s ease; }
+  @keyframes tera-flash {
+    0%   { transform: scaleX(-1) scale(1); }
+    40%  { transform: scaleX(-1) scale(1.18); filter: brightness(5) saturate(0); }
+    100% { transform: scaleX(-1) scale(1); filter: brightness(1); }
+  }
+  .tera-crown {
+    position: absolute;
+    top: -36px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 38px;
+    display: none;
+    z-index: 6;
+    filter: drop-shadow(0 0 8px #7df9ff);
+    animation: crown-bob 1.4s ease-in-out infinite;
+  }
+  #player-box.tera .tera-crown { display: block; }
+  @keyframes crown-bob { 50% { transform: translateX(-50%) translateY(-9px); } }
+  .spark {
+    position: absolute;
+    font-size: 26px;
+    pointer-events: none;
+    z-index: 5;
+    animation: spark-fly .9s ease-out forwards;
+  }
+  @keyframes spark-fly { to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+  .tera-btn {
+    background: linear-gradient(135deg, #7df9ff 0%, #b388ff 100%);
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,.35);
+  }
+  .tera-btn:disabled { filter: saturate(.2); }
+
   .hp-plate {
     background: var(--card);
     border-radius: 14px;
@@ -541,6 +580,7 @@
       <img id="enemy-sprite" alt="">
     </div>
     <div class="combatant" id="player-box">
+      <span class="tera-crown">💎</span>
       <img id="player-sprite" alt="">
       <div class="hp-plate"><span id="player-name"></span>
         <div class="hp-bar"><div class="hp-fill" id="player-hp"></div></div>
@@ -887,6 +927,7 @@ function startBattle(mine) {
     myHP: 100, myMax: 100,
     enHP: 70, enMax: 70,
     over: false, busy: false,
+    tera: false, teraUsed: false,
   };
   document.getElementById("player-sprite").src = art(mine.id);
   document.getElementById("enemy-sprite").src = art(enemy.id);
@@ -910,7 +951,52 @@ function startBattle(mine) {
     b.onclick = () => playerMove(label, lo, hi);
     moves.appendChild(b);
   });
+  const tb = document.createElement("button");
+  tb.className = "move-btn tera-btn";
+  tb.id = "tera-btn";
+  tb.textContent = "💎 Tera!";
+  tb.onclick = teraTransform;
+  moves.appendChild(tb);
   show("screen-battle");
+}
+
+function teraTransform() {
+  if (battle.over || battle.busy || battle.teraUsed) return;
+  battle.teraUsed = true;
+  battle.busy = true;
+  setMovesEnabled(false);
+  const box = document.getElementById("player-box");
+  setMsg(`✨ ${battle.mine.name} Terastallized! ✨`);
+  box.classList.add("tera-in");
+  setTimeout(() => {
+    box.classList.remove("tera-in");
+    box.classList.add("tera");
+    battle.tera = true;
+    sparkleBurst(document.getElementById("player-sprite"));
+  }, 500);
+  setTimeout(() => {
+    setMsg(`${battle.mine.name} is sparkling with power! What now?`);
+    battle.busy = false;
+    setMovesEnabled(true);
+  }, 1700);
+}
+
+function sparkleBurst(el) {
+  const stage = document.querySelector(".battle-stage");
+  const r = el.getBoundingClientRect(), s = stage.getBoundingClientRect();
+  const cx = r.left - s.left + r.width / 2, cy = r.top - s.top + r.height / 2;
+  for (let i = 0; i < 18; i++) {
+    const sp = document.createElement("span");
+    sp.className = "spark";
+    sp.textContent = Math.random() < .3 ? "💎" : "✨";
+    sp.style.left = cx + "px";
+    sp.style.top = cy + "px";
+    const ang = Math.random() * Math.PI * 2, d = 60 + Math.random() * 90;
+    sp.style.setProperty("--dx", Math.cos(ang) * d + "px");
+    sp.style.setProperty("--dy", (Math.sin(ang) * d - 40) + "px");
+    stage.appendChild(sp);
+    setTimeout(() => sp.remove(), 1000);
+  }
 }
 
 function setMsg(t) { document.getElementById("battle-msg").textContent = t; }
@@ -928,14 +1014,17 @@ function updateHP() {
 
 function setMovesEnabled(on) {
   document.querySelectorAll(".move-btn").forEach(b => b.disabled = !on);
+  const tb = document.getElementById("tera-btn");
+  if (tb && battle.teraUsed) tb.disabled = true;
 }
 
 function playerMove(label, lo, hi) {
   if (battle.over || battle.busy) return;
   battle.busy = true;
   setMovesEnabled(false);
-  const dmg = randInt(lo, hi);
-  setMsg(`${battle.mine.name} used ${label}!`);
+  let dmg = randInt(lo, hi);
+  if (battle.tera) dmg = Math.round(dmg * 1.5);
+  setMsg(`${battle.mine.name} used ${label}!${battle.tera ? " 💎" : ""}`);
   const enemyBox = document.getElementById("enemy-box");
   enemyBox.classList.add("hit");
   setTimeout(() => enemyBox.classList.remove("hit"), 500);
