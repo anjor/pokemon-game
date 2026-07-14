@@ -369,6 +369,13 @@
     box-shadow: 0 0 12px 3px currentColor;
   }
   @keyframes spark-fly { to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+  #player-box.evolving img { animation: evolve-flash 1.7s ease; }
+  @keyframes evolve-flash {
+    0%   { transform: scaleX(-1) scale(1); filter: brightness(1); }
+    30%  { transform: scaleX(-1) scale(1.1);  filter: brightness(6) saturate(0); }
+    65%  { transform: scaleX(-1) scale(1.28); filter: brightness(6) saturate(0); }
+    100% { transform: scaleX(-1) scale(1); filter: brightness(1); }
+  }
   .tera-btn {
     background: linear-gradient(135deg, #7df9ff 0%, #b388ff 100%);
     color: #fff;
@@ -680,7 +687,48 @@ const RARES = [
   { id: 151, name: "Mew",       type: "psychic" },
 ];
 
-const ALL = [...POOL, ...RARES];
+// Evolved forms: reachable via evolution, not wild spawns
+const EVOLVED = [
+  { id: 18,  name: "Pidgeot",    type: "normal" },
+  { id: 28,  name: "Sandslash",  type: "ground" },
+  { id: 36,  name: "Clefable",   type: "fairy" },
+  { id: 38,  name: "Ninetales",  type: "fire" },
+  { id: 40,  name: "Wigglytuff", type: "fairy" },
+  { id: 45,  name: "Vileplume",  type: "grass" },
+  { id: 51,  name: "Dugtrio",    type: "ground" },
+  { id: 53,  name: "Persian",    type: "normal" },
+  { id: 55,  name: "Golduck",    type: "water" },
+  { id: 59,  name: "Arcanine",   type: "fire" },
+  { id: 62,  name: "Poliwrath",  type: "water" },
+  { id: 65,  name: "Alakazam",   type: "psychic" },
+  { id: 68,  name: "Machamp",    type: "fighting" },
+  { id: 76,  name: "Golem",      type: "rock" },
+  { id: 78,  name: "Rapidash",   type: "fire" },
+  { id: 80,  name: "Slowbro",    type: "water" },
+  { id: 82,  name: "Magneton",   type: "electric" },
+  { id: 91,  name: "Cloyster",   type: "water" },
+  { id: 105, name: "Marowak",    type: "ground" },
+  { id: 117, name: "Seadra",     type: "water" },
+  { id: 121, name: "Starmie",    type: "water" },
+  { id: 130, name: "Gyarados",   type: "water" },
+  { id: 134, name: "Vaporeon",   type: "water" },
+  { id: 135, name: "Jolteon",    type: "electric" },
+  { id: 136, name: "Flareon",    type: "fire" },
+];
+
+// base id -> evolved id (array = random pick, e.g. Eevee's surprise)
+const EVOLUTIONS = {
+  1: 3, 4: 6, 7: 9,           // starters -> final forms
+  10: 12, 16: 18, 25: 26, 27: 28, 35: 36, 37: 38, 39: 40, 43: 45,
+  50: 51, 52: 53, 54: 55, 58: 59, 60: 62, 63: 65, 66: 68, 74: 76,
+  77: 78, 79: 80, 81: 82, 90: 91, 92: 94, 104: 105, 116: 117,
+  120: 121, 129: 130,          // Magikarp -> Gyarados!
+  133: [134, 135, 136],        // Eevee -> surprise!
+  147: 149,                    // Dratini -> Dragonite
+};
+const WINS_TO_EVOLVE = 2;
+
+const ALL = [...POOL, ...RARES, ...EVOLVED];
 const byId = id => ALL.find(p => p.id === id);
 
 const AVATARS = [1, 4, 7, 25, 133, 39]; // Bulbasaur, Charmander, Squirtle, Pikachu, Eevee, Jigglypuff
@@ -933,7 +981,9 @@ function startBattlePick() {
   grid.innerHTML = "";
   uniqueCaught().forEach(p => {
     const b = document.createElement("button");
-    b.innerHTML = `<img src="${art(p.id)}" alt=""><span>${p.name}</span>`;
+    const wins = (me().wins || {})[p.id] || 0;
+    const stars = EVOLUTIONS[p.id] ? `<span>${"⭐".repeat(wins) || "&nbsp;"}</span>` : "";
+    b.innerHTML = `<img src="${art(p.id)}" alt=""><span>${p.name}</span>${stars}`;
     b.onclick = () => startBattle(p);
     grid.appendChild(b);
   });
@@ -975,14 +1025,18 @@ function startBattle(mine) {
   const tb = document.createElement("button");
   tb.className = "move-btn tera-btn";
   tb.id = "tera-btn";
-  tb.textContent = "💎 Tera!";
+  battle.teraAvailable = me().teraCharge !== false;
+  tb.textContent = battle.teraAvailable ? "💎 Tera!" : "💎 Recharging…";
+  tb.disabled = !battle.teraAvailable;
   tb.onclick = teraTransform;
   moves.appendChild(tb);
   show("screen-battle");
 }
 
 function teraTransform() {
-  if (battle.over || battle.busy || battle.teraUsed) return;
+  if (battle.over || battle.busy || battle.teraUsed || !battle.teraAvailable) return;
+  me().teraCharge = false;
+  persist();
   battle.teraUsed = true;
   battle.busy = true;
   setMovesEnabled(false);
@@ -1044,7 +1098,7 @@ function updateHP() {
 function setMovesEnabled(on) {
   document.querySelectorAll(".move-btn").forEach(b => b.disabled = !on);
   const tb = document.getElementById("tera-btn");
-  if (tb && battle.teraUsed) tb.disabled = true;
+  if (tb && (battle.teraUsed || !battle.teraAvailable)) tb.disabled = true;
 }
 
 function playerMove(label, lo, hi) {
@@ -1084,6 +1138,8 @@ function win() {
   setMsg(`${battle.enemy.name} fainted! You win! 🏆`);
   confetti();
   endBattleUI();
+  const evo = registerWin();
+  if (evo) setTimeout(() => playEvolution(evo), 1600);
 }
 
 function lose() {
@@ -1094,8 +1150,49 @@ function lose() {
 }
 
 function endBattleUI() {
+  const p = me();
+  if (!battle.teraUsed && p.teraCharge === false) {
+    p.teraCharge = true; // sat out a battle -> recharged
+    persist();
+  }
   document.getElementById("moves").style.display = "none";
   document.getElementById("battle-end").style.display = "flex";
+}
+
+/* ================= EVOLUTION ================= */
+
+function registerWin() {
+  const p = me();
+  p.wins = p.wins || {};
+  const id = battle.mine.id;
+  p.wins[id] = (p.wins[id] || 0) + 1;
+  let evoTo = EVOLUTIONS[id];
+  if (p.wins[id] >= WINS_TO_EVOLVE && evoTo) {
+    if (Array.isArray(evoTo)) evoTo = rand(evoTo);
+    const idx = p.caught.indexOf(id);
+    if (idx !== -1) p.caught[idx] = evoTo;
+    p.wins[id] = 0;
+    persist();
+    return { from: battle.mine, to: byId(evoTo) };
+  }
+  persist();
+  return null;
+}
+
+function playEvolution(evo) {
+  const box = document.getElementById("player-box");
+  setMsg(`What?! ${evo.from.name} is evolving! ✨`);
+  box.classList.add("evolving");
+  setTimeout(() => {
+    document.getElementById("player-sprite").src = art(evo.to.id);
+    document.getElementById("player-name").textContent = evo.to.name;
+  }, 800);
+  setTimeout(() => {
+    box.classList.remove("evolving");
+    sparkleBurst(document.getElementById("player-sprite"), TYPE_COLORS[evo.to.type]);
+    confetti();
+    setMsg(`${evo.from.name} evolved into ${evo.to.name}! 🎊`);
+  }, 1700);
 }
 
 /* ================= MATCH ================= */
