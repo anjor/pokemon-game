@@ -334,8 +334,8 @@
   /* Terastallization */
   .combatant.tera img { animation: tera-glow 1.6s ease-in-out infinite alternate; }
   @keyframes tera-glow {
-    from { filter: saturate(1.4) drop-shadow(0 0 8px #7df9ff); }
-    to   { filter: saturate(1.8) drop-shadow(0 0 22px #b388ff); }
+    from { filter: saturate(1.4) drop-shadow(0 0 8px var(--tera-color, #7df9ff)); }
+    to   { filter: saturate(1.8) drop-shadow(0 0 22px var(--tera-color2, #b388ff)); }
   }
   #player-box.tera-in img { animation: tera-flash .9s ease; }
   @keyframes tera-flash {
@@ -350,7 +350,7 @@
     font-size: 38px;
     display: none;
     z-index: 6;
-    filter: drop-shadow(0 0 8px #7df9ff);
+    filter: drop-shadow(0 0 8px var(--tera-color, #7df9ff));
     animation: crown-bob 1.4s ease-in-out infinite;
   }
   #player-box.tera .tera-crown { display: block; }
@@ -361,6 +361,12 @@
     pointer-events: none;
     z-index: 5;
     animation: spark-fly .9s ease-out forwards;
+  }
+  .spark.dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 12px 3px currentColor;
   }
   @keyframes spark-fly { to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
   .tera-btn {
@@ -694,6 +700,21 @@ const MOVES = {
   dragon:   [["Dragon Puff 🐉", 18, 26], ["Twister 🌪️", 15, 30]],
 };
 
+const TYPE_COLORS = {
+  electric: ["#ffd54f", "#fff176"],
+  fire:     ["#ff7043", "#ffab40"],
+  water:    ["#4fc3f7", "#81d4fa"],
+  grass:    ["#66bb6a", "#aed581"],
+  normal:   ["#cfd8dc", "#eceff1"],
+  fairy:    ["#f48fb1", "#f8bbd0"],
+  psychic:  ["#ba68c8", "#ce93d8"],
+  ground:   ["#bcaaa4", "#d7ccc8"],
+  fighting: ["#ef9a9a", "#e57373"],
+  rock:     ["#a1887f", "#bcaaa4"],
+  ghost:    ["#9575cd", "#b39ddb"],
+  dragon:   ["#7986cb", "#9fa8da"],
+};
+
 const art = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
 // Broken-image fallback: swap the src to a ❓ placeholder so offline play degrades
@@ -966,13 +987,16 @@ function teraTransform() {
   battle.busy = true;
   setMovesEnabled(false);
   const box = document.getElementById("player-box");
+  const colors = TYPE_COLORS[battle.mine.type] || ["#7df9ff", "#b388ff"];
+  box.style.setProperty("--tera-color", colors[0]);
+  box.style.setProperty("--tera-color2", colors[1]);
   setMsg(`✨ ${battle.mine.name} Terastallized! ✨`);
   box.classList.add("tera-in");
   setTimeout(() => {
     box.classList.remove("tera-in");
     box.classList.add("tera");
     battle.tera = true;
-    sparkleBurst(document.getElementById("player-sprite"));
+    sparkleBurst(document.getElementById("player-sprite"), colors);
   }, 500);
   setTimeout(() => {
     setMsg(`${battle.mine.name} is sparkling with power! What now?`);
@@ -981,14 +1005,19 @@ function teraTransform() {
   }, 1700);
 }
 
-function sparkleBurst(el) {
+function sparkleBurst(el, colors) {
   const stage = document.querySelector(".battle-stage");
   const r = el.getBoundingClientRect(), s = stage.getBoundingClientRect();
   const cx = r.left - s.left + r.width / 2, cy = r.top - s.top + r.height / 2;
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < 24; i++) {
     const sp = document.createElement("span");
     sp.className = "spark";
-    sp.textContent = Math.random() < .3 ? "💎" : "✨";
+    if (colors && i % 2 === 0) {
+      sp.classList.add("dot");
+      sp.style.color = rand(colors);
+    } else {
+      sp.textContent = Math.random() < .3 ? "💎" : "✨";
+    }
     sp.style.left = cx + "px";
     sp.style.top = cy + "px";
     const ang = Math.random() * Math.PI * 2, d = 60 + Math.random() * 90;
