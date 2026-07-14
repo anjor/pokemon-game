@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pokemon Adventure!</title>
+<title>Gotta Catch 'Em!</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
 
@@ -93,6 +93,62 @@
     font-size: 100px; display: flex; align-items: center; justify-content: center;
   }
   .profile-card .count { font-size: 18px; color: #636e72; }
+
+  .profile-card .edit-name {
+    position: absolute; top: 10px; right: 12px;
+    font-size: 22px;
+    background: #f1f2f6;
+    padding: 6px 10px;
+    border-radius: 12px;
+  }
+  .profile-card { position: relative; }
+
+  .reset-open {
+    margin-top: 40px;
+    background: rgba(255,255,255,.55);
+    padding: 10px 22px;
+    font-size: 18px;
+    color: #636e72;
+    box-shadow: 0 3px 0 rgba(0,0,0,.1);
+  }
+
+  #name-input {
+    font-family: inherit;
+    font-size: 34px;
+    text-align: center;
+    padding: 14px 24px;
+    border: 4px solid var(--blue);
+    border-radius: 20px;
+    width: min(420px, 86vw);
+    margin-bottom: 24px;
+    -webkit-user-select: text; user-select: text;
+    background: var(--card);
+    color: inherit;
+  }
+  #name-input:focus { outline: none; border-color: var(--accent); }
+
+  .screen.danger { background: linear-gradient(180deg, #ee5253 0%, #c0392b 100%); color: #fff; justify-content: center; gap: 18px; }
+  .screen.danger h1 { text-shadow: 2px 2px 0 rgba(0,0,0,.25); animation: alarm 1s ease-in-out infinite; }
+  @keyframes alarm { 50% { transform: scale(1.08); } }
+  .warn-text { font-size: 30px; text-align: center; line-height: 1.5; }
+  .hold-btn {
+    position: relative;
+    margin-top: 26px;
+    background: #7f1d1d;
+    color: #ffd6d6;
+    font-size: 20px;
+    padding: 16px 30px;
+    overflow: hidden;
+    touch-action: none;
+  }
+  .hold-btn span { position: relative; z-index: 2; }
+  .hold-fill {
+    position: absolute; inset: 0;
+    width: 0;
+    background: rgba(255,255,255,.35);
+    z-index: 1;
+  }
+  .hold-fill.holding { width: 100%; transition: width 3s linear; }
 
   .avatar-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
   .avatar-grid button {
@@ -397,8 +453,28 @@
 
 <!-- ============ WHO'S PLAYING ============ -->
 <div class="screen active" id="screen-profile">
-  <h1>Who's playing? 👋</h1>
+  <h1>Gotta Catch 'Em! ⚡</h1>
+  <h2>Who's playing? 👋</h2>
   <div class="row" id="profile-cards"></div>
+  <button class="reset-open" onclick="show('screen-reset')">🗑️ Start over</button>
+</div>
+
+<!-- ============ NAME ENTRY ============ -->
+<div class="screen" id="screen-name">
+  <h1>What's your name? ✏️</h1>
+  <input id="name-input" maxlength="12" placeholder="Type your name" autocomplete="off">
+  <button class="big-btn" onclick="saveName()"><span class="icon">✅</span>Done</button>
+</div>
+
+<!-- ============ RESET WARNING ============ -->
+<div class="screen danger" id="screen-reset">
+  <h1>⚠️ WAIT! ⚠️</h1>
+  <p class="warn-text">This erases <b>ALL</b> Pokemon<br>for <b>BOTH</b> trainers.<br>They will be gone <b>FOREVER!</b></p>
+  <button class="big-btn" onclick="show('screen-profile')"><span class="icon">🙅</span>No! Go back!</button>
+  <button class="hold-btn" id="hold-reset">
+    <span>Hold 3 seconds to erase 💥</span>
+    <div class="hold-fill" id="hold-fill"></div>
+  </button>
 </div>
 
 <!-- ============ PICK AVATAR ============ -->
@@ -612,10 +688,12 @@ function show(id) {
   document.getElementById(id).classList.add("active");
 }
 
+const displayName = i => save.profiles[i].name || `Trainer ${i + 1}`;
+
 function goHub() {
   const p = me();
   document.getElementById("hub-avatar").src = art(p.avatar);
-  document.getElementById("hub-count").textContent = `You've caught ${p.caught.length}!`;
+  document.getElementById("hub-count").textContent = `${displayName(current)} caught ${p.caught.length}!`;
   show("screen-hub");
 }
 
@@ -629,11 +707,17 @@ function renderProfiles() {
     card.className = "profile-card";
     if (p.avatar) {
       card.innerHTML = `<img src="${art(p.avatar)}" alt="">
-        <span>Trainer ${i + 1}</span>
-        <span class="count">${p.caught.length} caught</span>`;
+        <span>${displayName(i)}</span>
+        <span class="count">${p.caught.length} caught</span>
+        <span class="edit-name" title="Change name">✏️</span>`;
+      card.querySelector(".edit-name").onclick = e => {
+        e.stopPropagation();
+        current = i;
+        askName(() => { renderProfiles(); show("screen-profile"); });
+      };
     } else {
       card.innerHTML = `<span class="placeholder">🥚</span>
-        <span>Trainer ${i + 1}</span>
+        <span>${displayName(i)}</span>
         <span class="count">New trainer!</span>`;
     }
     card.onclick = () => {
@@ -643,6 +727,31 @@ function renderProfiles() {
     wrap.appendChild(card);
   });
 }
+
+/* ================= NAMES ================= */
+
+let nameDone = null;
+
+function askName(done) {
+  nameDone = done;
+  const input = document.getElementById("name-input");
+  input.value = me().name || "";
+  show("screen-name");
+  input.focus();
+}
+
+function saveName() {
+  const val = document.getElementById("name-input").value.trim().slice(0, 12);
+  if (val) me().name = val;
+  persist();
+  const done = nameDone;
+  nameDone = null;
+  if (done) done();
+}
+
+document.getElementById("name-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") saveName();
+});
 
 function pickAvatar() {
   const grid = document.getElementById("avatar-grid");
@@ -656,7 +765,7 @@ function pickAvatar() {
       me().caught.push(id);
       persist();
       confetti();
-      goHub();
+      askName(goHub);
     };
     grid.appendChild(b);
   });
@@ -968,6 +1077,33 @@ function confetti() {
     document.body.appendChild(c);
     setTimeout(() => c.remove(), 4000);
   }
+}
+
+/* ================= RESET ================= */
+
+let holdTimer = null;
+const holdBtn = document.getElementById("hold-reset");
+const holdFill = document.getElementById("hold-fill");
+
+function startHold() {
+  holdFill.classList.add("holding");
+  holdTimer = setTimeout(doReset, 3000);
+}
+function cancelHold() {
+  clearTimeout(holdTimer);
+  holdFill.classList.remove("holding");
+}
+holdBtn.addEventListener("pointerdown", startHold);
+holdBtn.addEventListener("pointerup", cancelHold);
+holdBtn.addEventListener("pointerleave", cancelHold);
+
+function doReset() {
+  cancelHold();
+  save = { profiles: [{ avatar: null, caught: [] }, { avatar: null, caught: [] }] };
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  current = 0;
+  renderProfiles();
+  show("screen-profile");
 }
 
 /* ================= BOOT ================= */
