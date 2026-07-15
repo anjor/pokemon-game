@@ -540,6 +540,11 @@
     font-size: 17px;
   }
   .dex-size { display: flex; gap: 20px; font-size: 17px; }
+  .evo-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+  .evo-sprite { width: 54px; height: 54px; object-fit: contain; }
+  .evo-sprite.current { background: var(--accent); border-radius: 12px; }
+  .evo-arrow { font-size: 22px; }
+  .evo-branch { display: flex; gap: 4px; }
 
   /* ---------- confetti ---------- */
   .confetti {
@@ -1436,12 +1441,43 @@ function showDexDetail(id) {
   document.getElementById("detail-fact").textContent = d.fact;
   document.getElementById("detail-size").innerHTML =
     `<span>📏 ${d.h} m</span><span>⚖️ ${d.w} kg</span>`;
-  document.getElementById("detail-evo").innerHTML = "";
+  renderEvoRow(id);
   document.getElementById("dex-overlay").classList.add("open");
 }
 
 function closeDexDetail() {
   document.getElementById("dex-overlay").classList.remove("open");
+}
+
+// Walk EVOLUTIONS backwards: who evolves INTO this id? (null if nobody)
+function evoPrev(id) {
+  for (const k in EVOLUTIONS) {
+    const v = EVOLUTIONS[k];
+    if (Array.isArray(v) ? v.includes(id) : v === id) return Number(k);
+  }
+  return null;
+}
+
+function renderEvoRow(id) {
+  const row = document.getElementById("detail-evo");
+  row.innerHTML = "";
+  let base = id, prev = evoPrev(base);
+  while (prev !== null) { base = prev; prev = evoPrev(base); }
+  const chain = [base];
+  let branches = null;
+  let next = EVOLUTIONS[base];
+  while (next != null) {
+    if (Array.isArray(next)) { branches = next; break; }
+    chain.push(next);
+    next = EVOLUTIONS[next];
+  }
+  if (chain.length === 1 && !branches) return; // no evolution relation
+  const sprite = pid =>
+    `<img class="evo-sprite${pid === id ? " current" : ""}" src="${art(pid)}" alt="${byId(pid).name}">`;
+  const arrow = `<span class="evo-arrow">→</span>`;
+  let html = chain.map(sprite).join(arrow);
+  if (branches) html += arrow + `<span class="evo-branch">${branches.map(sprite).join("")}</span>`;
+  row.innerHTML = html;
 }
 
 /* ================= CONFETTI ================= */
