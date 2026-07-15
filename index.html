@@ -326,6 +326,15 @@
     60% { transform: scaleX(-1) translateX(-8px); filter: brightness(2.5) saturate(0); }
     80% { transform: scaleX(-1) translateX(6px); }
   }
+  #player-box.big-hit img { animation: big-hit-flip .65s ease; }
+  @keyframes big-hit-flip {
+    0%, 100% { transform: scaleX(-1) translateX(0) rotate(0); filter: none; }
+    15% { transform: scaleX(-1) translateX(-26px) rotate(-8deg); filter: brightness(3) saturate(0); }
+    30% { transform: scaleX(-1) translateX(20px) rotate(6deg); }
+    45% { transform: scaleX(-1) translateX(-16px) rotate(-5deg); filter: brightness(3) saturate(0); }
+    60% { transform: scaleX(-1) translateX(12px) rotate(4deg); }
+    80% { transform: scaleX(-1) translateX(-6px) rotate(-2deg); }
+  }
   .combatant.faint img { animation: faint .8s ease forwards; }
   @keyframes faint { to { transform: translateY(60px); opacity: 0; } }
   #player-box.faint img { animation: faint-flip .8s ease forwards; }
@@ -714,6 +723,8 @@ const EVOLVED = [
   { id: 134, name: "Vaporeon",   type: "water" },
   { id: 135, name: "Jolteon",    type: "electric" },
   { id: 136, name: "Flareon",    type: "fire" },
+  { id: 208, name: "Steelix",    type: "steel" },
+  { id: 242, name: "Blissey",    type: "normal" },
 ];
 
 // base id -> evolved id (array = random pick, e.g. Eevee's surprise)
@@ -725,8 +736,10 @@ const EVOLUTIONS = {
   120: 121, 129: 130,          // Magikarp -> Gyarados!
   133: [134, 135, 136],        // Eevee -> surprise!
   147: 149,                    // Dratini -> Dragonite
+  95: 208, 113: 242,           // Onix -> Steelix, Chansey -> Blissey (Gen 2)
 };
 const WINS_TO_EVOLVE = 2;
+const POWER_MOVE_CHANCE = 0.3; // tuned with enemy HP/damage for ~25% loss rate
 
 const ALL = [...POOL, ...RARES, ...EVOLVED];
 const byId = id => ALL.find(p => p.id === id);
@@ -761,6 +774,7 @@ const TYPE_COLORS = {
   rock:     ["#a1887f", "#bcaaa4"],
   ghost:    ["#9575cd", "#b39ddb"],
   dragon:   ["#7986cb", "#9fa8da"],
+  steel:    ["#b0bec5", "#eceff1"],
 };
 
 const art = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
@@ -996,7 +1010,7 @@ function startBattle(mine) {
   battle = {
     mine, enemy,
     myHP: 100, myMax: 100,
-    enHP: 70, enMax: 70,
+    enHP: 100, enMax: 100,
     over: false, busy: false,
     tera: false, teraUsed: false,
   };
@@ -1116,11 +1130,14 @@ function playerMove(label, lo, hi) {
 
   setTimeout(() => {
     if (battle.enHP <= 0) return win();
-    const edmg = randInt(6, 14);
-    setMsg(`${battle.enemy.name} fights back!`);
+    const power = Math.random() < POWER_MOVE_CHANCE;
+    const edmg = power ? randInt(26, 34) : randInt(12, 18);
+    setMsg(power
+      ? `💥 ${battle.enemy.name} unleashes a POWERFUL attack!`
+      : `${battle.enemy.name} fights back!`);
     const playerBox = document.getElementById("player-box");
-    playerBox.classList.add("hit");
-    setTimeout(() => playerBox.classList.remove("hit"), 500);
+    playerBox.classList.add(power ? "big-hit" : "hit");
+    setTimeout(() => playerBox.classList.remove("hit", "big-hit"), power ? 700 : 500);
     battle.myHP -= edmg;
     updateHP();
     setTimeout(() => {
