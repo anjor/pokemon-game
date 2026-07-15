@@ -16,7 +16,7 @@ self-contained HTML file, no install, no build step.
   a crystal transformation and boosted moves.
 - **Match** 🎴 — memory pairs using the Pokemon you've caught, in small (easy)
   or big grids.
-- **Pokedex** 📕 — everything you've caught, with duplicate badges.
+- **Pokedex** 📕 — everything you've caught, with duplicate badges. Tap a Pokemon for its type, a fun fact, its real size, and its evolution chain.
 
 Designed so a 4-year-old can navigate alone: big picture buttons, minimal
 reading, and a reset that requires holding a button for 3 seconds behind a
