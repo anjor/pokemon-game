@@ -496,6 +496,51 @@
     font-size: 14px;
   }
 
+  .dex-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 50;
+  }
+  .dex-overlay.open { display: flex; }
+  .dex-detail {
+    position: relative;
+    background: var(--card);
+    border-radius: 22px;
+    box-shadow: 0 8px 0 rgba(0,0,0,.2);
+    padding: 26px 28px 22px;
+    width: min(420px, 92vw);
+    max-height: 88vh;
+    overflow-y: auto;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    text-align: center;
+  }
+  .dex-detail h2 { font-size: 30px; }
+  #detail-art { width: 160px; height: 160px; object-fit: contain; }
+  .dex-close {
+    position: absolute; top: 10px; right: 12px;
+    width: 44px; height: 44px;
+    border: none; border-radius: 50%;
+    background: var(--red); color: #fff;
+    font-size: 20px; font-family: inherit;
+    box-shadow: 0 3px 0 rgba(0,0,0,.2);
+    cursor: pointer;
+  }
+  .type-badge {
+    border-radius: 999px;
+    padding: 4px 18px;
+    font-size: 18px;
+    box-shadow: 0 3px 0 rgba(0,0,0,.12);
+  }
+  .dex-fact {
+    background: rgba(0,0,0,.06);
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 17px;
+  }
+  .dex-size { display: flex; gap: 20px; font-size: 17px; }
+
   /* ---------- confetti ---------- */
   .confetti {
     position: fixed;
@@ -643,6 +688,17 @@
   <button class="home-btn" onclick="goHub()">🏠</button>
   <h1 id="dex-title">Pokedex 📕</h1>
   <div class="dex-grid" id="dex-grid"></div>
+  <div class="dex-overlay" id="dex-overlay" onclick="closeDexDetail()">
+    <div class="dex-detail" onclick="event.stopPropagation()">
+      <button class="dex-close" onclick="closeDexDetail()">✖</button>
+      <img id="detail-art" src="" alt="">
+      <h2 id="detail-name"></h2>
+      <span class="type-badge" id="detail-type"></span>
+      <p class="dex-fact" id="detail-fact"></p>
+      <div class="dex-size" id="detail-size"></div>
+      <div class="evo-row" id="detail-evo"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1364,9 +1420,28 @@ function showDex() {
     cell.innerHTML = `<img src="${art(id)}" alt="">
       <span>${p.name}</span>
       ${counts[id] > 1 ? `<span class="dup">×${counts[id]}</span>` : ""}`;
+    cell.onclick = () => showDexDetail(id);
     grid.appendChild(cell);
   });
   show("screen-dex");
+}
+
+function showDexDetail(id) {
+  const p = byId(id), d = DEX_INFO[id];
+  document.getElementById("detail-art").src = art(id);
+  document.getElementById("detail-name").textContent = p.name;
+  const badge = document.getElementById("detail-type");
+  badge.textContent = p.type;
+  badge.style.background = (TYPE_COLORS[p.type] || ["#cfd8dc"])[0];
+  document.getElementById("detail-fact").textContent = d.fact;
+  document.getElementById("detail-size").innerHTML =
+    `<span>📏 ${d.h} m</span><span>⚖️ ${d.w} kg</span>`;
+  document.getElementById("detail-evo").innerHTML = "";
+  document.getElementById("dex-overlay").classList.add("open");
+}
+
+function closeDexDetail() {
+  document.getElementById("dex-overlay").classList.remove("open");
 }
 
 /* ================= CONFETTI ================= */
