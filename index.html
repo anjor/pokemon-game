@@ -392,6 +392,13 @@
   }
   .tera-btn:disabled { filter: saturate(.2); }
 
+  .mega-btn {
+    background: linear-gradient(135deg, #f6d365 0%, #fb6f3c 100%);
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,.35);
+  }
+  .mega-btn:disabled { filter: saturate(.2); }
+
   .hp-plate {
     background: var(--card);
     border-radius: 14px;
@@ -1203,6 +1210,8 @@ function startBattle(mine) {
     enHP: 100, enMax: 100,
     over: false, busy: false,
     tera: false, teraUsed: false,
+    mega: false, megaUsed: false,
+    megaForm: (FORMS[mine.id] || []).find(f => f.kind === "mega") || null,
   };
   document.getElementById("player-sprite").src = art(mine.id);
   document.getElementById("enemy-sprite").src = art(enemy.id);
@@ -1234,6 +1243,14 @@ function startBattle(mine) {
   tb.disabled = !battle.teraAvailable;
   tb.onclick = teraTransform;
   moves.appendChild(tb);
+  if (battle.megaForm) {
+    const mb = document.createElement("button");
+    mb.className = "move-btn mega-btn";
+    mb.id = "mega-btn";
+    mb.textContent = "⚡ Mega!";
+    mb.onclick = megaEvolve;
+    moves.appendChild(mb);
+  }
   show("screen-battle");
 }
 
@@ -1261,6 +1278,35 @@ function teraTransform() {
     battle.busy = false;
     setMovesEnabled(true);
   }, 1700);
+}
+
+// Mega Evolution: a once-per-battle transform for Pokemon with a Mega form.
+// It swaps to the real mega sprite and boosts moves. Stacks with Terastallize.
+function megaEvolve() {
+  if (battle.over || battle.busy || battle.megaUsed || !battle.megaForm) return;
+  battle.megaUsed = true;
+  battle.busy = true;
+  setMovesEnabled(false);
+  const box = document.getElementById("player-box");
+  const sprite = document.getElementById("player-sprite");
+  const colors = TYPE_COLORS[battle.megaForm.type] || ["#f6d365", "#fb6f3c"];
+  setMsg(`⚡ ${battle.mine.name} is Mega Evolving! ⚡`);
+  box.classList.add("evolving");
+  setTimeout(() => {
+    sprite.src = art(battle.megaForm.id);
+    document.getElementById("player-name").textContent = battle.megaForm.label;
+  }, 800);
+  setTimeout(() => {
+    box.classList.remove("evolving");
+    battle.mega = true;
+    sparkleBurst(sprite, colors);
+    confetti();
+  }, 1700);
+  setTimeout(() => {
+    setMsg(`${battle.megaForm.label} is ready to battle! What now?`);
+    battle.busy = false;
+    setMovesEnabled(true);
+  }, 2400);
 }
 
 function sparkleBurst(el, colors) {
@@ -1303,6 +1349,8 @@ function setMovesEnabled(on) {
   document.querySelectorAll(".move-btn").forEach(b => b.disabled = !on);
   const tb = document.getElementById("tera-btn");
   if (tb && (battle.teraUsed || !battle.teraAvailable)) tb.disabled = true;
+  const mb = document.getElementById("mega-btn");
+  if (mb && battle.megaUsed) mb.disabled = true;
 }
 
 function playerMove(label, lo, hi) {
@@ -1311,7 +1359,8 @@ function playerMove(label, lo, hi) {
   setMovesEnabled(false);
   let dmg = randInt(lo, hi);
   if (battle.tera) dmg = Math.round(dmg * 1.5);
-  setMsg(`${battle.mine.name} used ${label}!${battle.tera ? " 💎" : ""}`);
+  if (battle.mega) dmg = Math.round(dmg * 1.5);
+  setMsg(`${battle.mine.name} used ${label}!${battle.mega ? " ⚡" : ""}${battle.tera ? " 💎" : ""}`);
   const enemyBox = document.getElementById("enemy-box");
   enemyBox.classList.add("hit");
   setTimeout(() => enemyBox.classList.remove("hit"), 500);
