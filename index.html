@@ -974,6 +974,20 @@ const FORMS = {
   80:  [{ id: 10165, label: "Galarian Slowbro",    kind: "regional", type: "psychic", fact: "The Shellder latched onto its arm this time!" }],
 };
 
+// Flatten FORMS into a lookup by form id -> { base, label, kind, type, fact }.
+// Used to render a Pokemon that has permanently taken on a regional / Gigantamax form.
+const FORM_BY_ID = {};
+for (const base in FORMS) FORMS[base].forEach(f => { FORM_BY_ID[f.id] = { ...f, base: Number(base) }; });
+
+// Regional forms and Gigantamax stick for good; Mega reverts after its showcase.
+const isPermanentForm = kind => kind === "regional" || kind === "gmax";
+
+// The permanent form a caught Pokemon has taken on (or null if it's still its base shape).
+function activeForm(baseId) {
+  const fid = me().forms && me().forms[baseId];
+  return fid ? FORM_BY_ID[fid] : null;
+}
+
 const art = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
 // Broken-image fallback: swap the src to a ❓ placeholder so offline play degrades
@@ -1523,10 +1537,11 @@ function showDex() {
   grid.innerHTML = "";
   ids.forEach(id => {
     const p = byId(id);
+    const form = activeForm(id);        // show the permanent form if it has taken one
     const cell = document.createElement("div");
     cell.className = "dex-cell";
-    cell.innerHTML = `<img src="${art(id)}" alt="">
-      <span>${p.name}</span>
+    cell.innerHTML = `<img src="${art(form ? form.id : id)}" alt="">
+      <span>${form ? form.label : p.name}</span>
       ${counts[id] > 1 ? `<span class="dup">×${counts[id]}</span>` : ""}`;
     cell.onclick = () => showDexDetail(id);
     grid.appendChild(cell);
@@ -1536,14 +1551,16 @@ function showDex() {
 
 function showDexDetail(id) {
   const p = byId(id), d = DEX_INFO[id];
+  const form = activeForm(id);          // a Pokemon that took a permanent form opens in that shape
+  const type = form ? form.type : p.type;
   const artEl = document.getElementById("detail-art");
   artEl.classList.remove("morphing");
-  artEl.src = art(id);
-  document.getElementById("detail-name").textContent = p.name;
+  artEl.src = art(form ? form.id : id);
+  document.getElementById("detail-name").textContent = form ? form.label : p.name;
   const badge = document.getElementById("detail-type");
-  badge.textContent = p.type;
-  badge.style.background = (TYPE_COLORS[p.type] || ["#cfd8dc"])[0];
-  document.getElementById("detail-fact").textContent = d.fact;
+  badge.textContent = type;
+  badge.style.background = (TYPE_COLORS[type] || ["#cfd8dc"])[0];
+  document.getElementById("detail-fact").textContent = form ? form.fact : d.fact;
   document.getElementById("detail-size").innerHTML =
     `<span>📏 ${d.h} m</span><span>⚖️ ${d.w} kg</span>`;
   renderFormsRow(id, p, d);
@@ -1562,16 +1579,30 @@ function renderFormsRow(id, p, base) {
   if (!forms) return;
   const artEl = document.getElementById("detail-art");
   const factEl = document.getElementById("detail-fact");
+  const nameEl = document.getElementById("detail-name");
   const chips = [];
+  const lockedId = (me().forms || {})[id] || null;  // the form this Pokemon has kept for good
 
-  const swap = (chip, spriteId, factText, type) => {
+  // form === null for the base chip; a Mega preview reverts on close, but a regional or
+  // Gigantamax transformation is written to the save so the Pokemon keeps that shape forever.
+  const swap = (chip, spriteId, factText, label, type, form) => {
     if (chip.classList.contains("active")) return;
     chips.forEach(c => c.classList.remove("active"));
     chip.classList.add("active");
+    if (form && isPermanentForm(form.kind)) {
+      const prof = me();
+      prof.forms = prof.forms || {};
+      prof.forms[id] = form.id;
+      persist();
+    }
     artEl.classList.remove("morphing");
     void artEl.offsetWidth;          // restart the transform animation
     artEl.classList.add("morphing");
-    setTimeout(() => { artEl.src = art(spriteId); factEl.textContent = factText; }, 350);
+    setTimeout(() => {
+      artEl.src = art(spriteId);
+      factEl.textContent = factText;
+      nameEl.textContent = label;
+    }, 350);
     setTimeout(() => dexSparkle(TYPE_COLORS[type]), 500);
   };
 
@@ -1585,12 +1616,13 @@ function renderFormsRow(id, p, base) {
     return b;
   };
 
-  const baseChip = addChip(p.name, true,
-    () => swap(baseChip, id, base.fact, p.type));
+  const baseChip = addChip(p.name, !lockedId,
+    () => swap(baseChip, id, base.fact, p.name, p.type, null));
   forms.forEach(f => {
     const short = f.label.replace(p.name, "").replace(/\s+/g, " ").trim() || f.label;
-    const chip = addChip(`${FORM_EMOJI[f.kind] || "✨"} ${short}`, false,
-      () => swap(chip, f.id, f.fact, f.type));
+    const lock = isPermanentForm(f.kind) ? " 🔒" : "";
+    const chip = addChip(`${FORM_EMOJI[f.kind] || "✨"} ${short}${lock}`, lockedId === f.id,
+      () => swap(chip, f.id, f.fact, f.label, f.type, f));
   });
 }
 
