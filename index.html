@@ -560,7 +560,7 @@
   .evo-sprite { width: 54px; height: 54px; object-fit: contain; }
   .evo-sprite.current { background: var(--accent); border-radius: 12px; }
   .evo-arrow { font-size: 22px; }
-  .evo-branch { display: flex; gap: 4px; }
+  .evo-branch { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: calc(4 * 54px + 3 * 4px); }
 
   /* ---------- special forms (mega / gigantamax / regional) ---------- */
   .forms-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -893,6 +893,11 @@ const EVOLVED = [
   { id: 134, name: "Vaporeon",   type: "water" },
   { id: 135, name: "Jolteon",    type: "electric" },
   { id: 136, name: "Flareon",    type: "fire" },
+  { id: 196, name: "Espeon",     type: "psychic" },
+  { id: 197, name: "Umbreon",    type: "dark" },
+  { id: 470, name: "Leafeon",    type: "grass" },
+  { id: 471, name: "Glaceon",    type: "ice" },
+  { id: 700, name: "Sylveon",    type: "fairy" },
   { id: 208, name: "Steelix",    type: "steel" },
   { id: 242, name: "Blissey",    type: "normal" },
 ];
@@ -917,7 +922,7 @@ const EVOLUTIONS = {
   50: 51, 52: 53, 54: 55, 58: 59, 77: 78, 79: 80, 81: 82, 90: 91,
   104: 105, 120: 121,
   129: 130,                    // Magikarp -> Gyarados!
-  133: [134, 135, 136],        // Eevee -> surprise!
+  133: [134, 135, 136, 471, 196, 470, 700, 197], // Eevee -> any of 8 Eeveelutions, surprise!
   95: 208, 113: 242,           // Onix -> Steelix, Chansey -> Blissey (Gen 2)
 };
 const WINS_TO_EVOLVE = 2;
@@ -941,6 +946,8 @@ const MOVES = {
   rock:     [["Rock Toss 🪨", 18, 26], ["Boulder Bash 🌋", 15, 30]],
   ghost:    [["Spooky Lick 👻", 18, 26], ["Shadow Ball 🌑", 15, 30]],
   dragon:   [["Dragon Puff 🐉", 18, 26], ["Twister 🌪️", 15, 30]],
+  dark:     [["Bite 🦷", 18, 26], ["Night Slash 🌃", 15, 30]],
+  ice:      [["Ice Shard ❄️", 18, 26], ["Blizzard 🌨️", 15, 30]],
 };
 
 const TYPE_COLORS = {
@@ -957,6 +964,8 @@ const TYPE_COLORS = {
   ghost:    ["#9575cd", "#b39ddb"],
   dragon:   ["#7986cb", "#9fa8da"],
   steel:    ["#b0bec5", "#eceff1"],
+  dark:     ["#8e8aa0", "#5c5470"],
+  ice:      ["#80deea", "#e0f7fa"],
 };
 
 // Pokedex detail info: kid-friendly fact, height h (m), weight w (kg).
@@ -1037,6 +1046,11 @@ const DEX_INFO = {
   134: { fact: "It can melt into water and disappear!", h: 1.0, w: 29.0 },
   135: { fact: "Its fur crackles with tiny lightning bolts!", h: 0.8, w: 24.5 },
   136: { fact: "It has a fiery furnace inside its fluffy body!", h: 0.9, w: 25.0 },
+  196: { fact: "Its forked tail twitches when it senses what's coming next!", h: 0.9, w: 26.5 },
+  197: { fact: "The yellow rings on its fur glow under the moonlight!", h: 1.0, w: 27.0 },
+  470: { fact: "It soaks up sunshine like a plant and smells like fresh grass!", h: 1.0, w: 25.5 },
+  471: { fact: "It can freeze its fur into sparkly icicle spikes!", h: 0.8, w: 25.9 },
+  700: { fact: "It wraps its ribbon feelers around friends to help them feel calm!", h: 1.0, w: 23.5 },
   143: { fact: "It eats a mountain of food, then sleeps all day!", h: 2.1, w: 460.0 },
   147: { fact: "A rare dragon that sheds its skin as it grows!", h: 1.8, w: 3.3 },
   148: { fact: "Some say it can change the weather and make rainbows!", h: 4.0, w: 16.5 },
