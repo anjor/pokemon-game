@@ -340,7 +340,11 @@
   #player-box.faint img { animation: faint-flip .8s ease forwards; }
   @keyframes faint-flip { to { transform: scaleX(-1) translateY(60px); opacity: 0; } }
 
-  /* Terastallization */
+  /* Terastallization: the sprite turns to faceted crystal (SVG filter #tera-crystal)
+     and a gem crown appears. The filter sits on .sprite-shell, not the img, so the
+     crystal look survives the hit / faint animations that rewrite the img's filter. */
+  .sprite-shell { display: block; line-height: 0; }
+  #player-box.tera .sprite-shell { filter: url(#tera-crystal); }
   .combatant.tera img { animation: tera-glow 1.6s ease-in-out infinite alternate; }
   @keyframes tera-glow {
     from { filter: saturate(1.4) drop-shadow(0 0 8px var(--tera-color, #7df9ff)); }
@@ -354,15 +358,20 @@
   }
   .tera-crown {
     position: absolute;
-    top: -36px; left: 50%;
+    top: -44px; left: 50%;
     transform: translateX(-50%);
-    font-size: 38px;
     display: none;
     z-index: 6;
     filter: drop-shadow(0 0 8px var(--tera-color, #7df9ff));
-    animation: crown-bob 1.4s ease-in-out infinite;
+    animation: crown-pop .5s ease-out, crown-bob 1.4s ease-in-out .5s infinite;
   }
+  .tera-crown svg { display: block; width: 88px; height: 62px; }
   #player-box.tera .tera-crown { display: block; }
+  @keyframes crown-pop {
+    from { transform: translateX(-50%) translateY(30px) scale(.2); opacity: 0; }
+    70%  { transform: translateX(-50%) translateY(-6px) scale(1.15); opacity: 1; }
+    to   { transform: translateX(-50%) translateY(0) scale(1); }
+  }
   @keyframes crown-bob { 50% { transform: translateX(-50%) translateY(-9px); } }
   .spark {
     position: absolute;
@@ -589,6 +598,34 @@
 </head>
 <body>
 
+<!-- Terastallize crystal filter, applied to the player's sprite while it's Tera.
+     It tints the Pokemon toward its type color, lays faceted crystal shading over
+     its body only, and sweeps a shine across it. Facet art is generated in JS. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="tera-crystal" primitiveUnits="objectBoundingBox" color-interpolation-filters="sRGB"
+          x="-0.3" y="-0.3" width="1.6" height="1.6">
+    <!-- the solid body: drop soft edges and glow so only the Pokemon itself turns to crystal -->
+    <feComponentTransfer in="SourceAlpha" result="body">
+      <feFuncA type="linear" slope="5" intercept="-4"/>
+    </feComponentTransfer>
+    <!-- tint toward the Tera type color but keep some of the Pokemon's own colors -->
+    <feFlood id="tera-flood" flood-color="#7df9ff" result="flood"/>
+    <feComposite in="flood" in2="body" operator="in" result="tintMask"/>
+    <feBlend in="tintMask" in2="SourceGraphic" mode="color" result="colored"/>
+    <feComposite in="colored" in2="SourceGraphic" operator="arithmetic" k2="0.5" k3="0.5" result="tinted"/>
+    <!-- faceted gem shading -->
+    <feImage id="tera-facets" x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="facetsRaw"/>
+    <feComposite in="facetsRaw" in2="body" operator="in" result="facets"/>
+    <feBlend in="facets" in2="tinted" mode="hard-light" result="cut"/>
+    <!-- a band of light that glides across the crystal -->
+    <feImage id="tera-shine" x="-1" y="0" width="1" height="1" preserveAspectRatio="none" result="shineRaw">
+      <animate attributeName="x" values="-1;-1;1" keyTimes="0;0.4;1" dur="2.6s" repeatCount="indefinite"/>
+    </feImage>
+    <feComposite in="shineRaw" in2="body" operator="in" result="shine"/>
+    <feBlend in="shine" in2="cut" mode="screen"/>
+  </filter>
+</svg>
+
 <!-- ============ WHO'S PLAYING ============ -->
 <div class="screen active" id="screen-profile">
   <h1>Gotta Catch 'Em! ⚡</h1>
@@ -679,8 +716,37 @@
       <img id="enemy-sprite" alt="">
     </div>
     <div class="combatant" id="player-box">
-      <span class="tera-crown">💎</span>
-      <img id="player-sprite" alt="">
+      <span class="tera-crown" aria-hidden="true">
+        <svg viewBox="0 0 100 70">
+          <defs>
+            <linearGradient id="crown-light" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff"/>
+              <stop offset="1" style="stop-color: var(--tera-color2, #b388ff)"/>
+            </linearGradient>
+            <linearGradient id="crown-dark" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color: var(--tera-color2, #b388ff)"/>
+              <stop offset="1" style="stop-color: var(--tera-color, #7df9ff)"/>
+            </linearGradient>
+          </defs>
+          <g stroke="#fff" stroke-width="1.2" stroke-linejoin="round">
+            <!-- each spike: lit left facet + shaded right facet -->
+            <polygon points="6,56 14,30 18,56"  fill="url(#crown-light)"/>
+            <polygon points="14,30 22,56 18,56" fill="url(#crown-dark)"/>
+            <polygon points="20,56 30,16 34,56" fill="url(#crown-light)"/>
+            <polygon points="30,16 40,56 34,56" fill="url(#crown-dark)"/>
+            <polygon points="60,56 70,16 66,56" fill="url(#crown-dark)"/>
+            <polygon points="70,16 80,56 66,56" fill="url(#crown-light)"/>
+            <polygon points="78,56 86,30 82,56" fill="url(#crown-dark)"/>
+            <polygon points="86,30 94,56 82,56" fill="url(#crown-light)"/>
+            <polygon points="36,56 50,2 50,56"  fill="url(#crown-light)"/>
+            <polygon points="50,2 64,56 50,56"  fill="url(#crown-dark)"/>
+            <!-- band with a center jewel -->
+            <polygon points="4,54 96,54 90,66 10,66" fill="url(#crown-dark)"/>
+            <polygon points="50,48 57,57 50,66 43,57" fill="#fff"/>
+          </g>
+        </svg>
+      </span>
+      <span class="sprite-shell"><img id="player-sprite" alt=""></span>
       <div class="hp-plate"><span id="player-name"></span>
         <div class="hp-bar"><div class="hp-fill" id="player-hp"></div></div>
       </div>
@@ -1305,6 +1371,37 @@ function startBattle(mine) {
   show("screen-battle");
 }
 
+// Paint the Tera filter's images: a jittered low-poly triangle mesh in grays
+// (light facets brighten, dark ones shade) and a soft diagonal band of light.
+(function buildTeraArt() {
+  const n = 7, pts = [];
+  for (let r = 0; r <= n; r++) for (let c = 0; c <= n; c++) {
+    const inner = r > 0 && c > 0 && r < n && c < n;
+    const j = () => inner ? (Math.random() - .5) * 9 : 0;
+    pts.push([c * 100 / n + j(), r * 100 / n + j()]);
+  }
+  const pt = (r, c) => pts[r * (n + 1) + c].map(v => v.toFixed(1)).join(",");
+  let tris = "";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    const a = pt(r, c), b = pt(r, c + 1), d = pt(r + 1, c), e = pt(r + 1, c + 1);
+    const pair = (r + c) % 2 ? [[a, b, e], [a, e, d]] : [[a, b, d], [b, e, d]];
+    pair.forEach(t => {
+      const v = Math.round(105 + Math.random() * 140);
+      tris += `<polygon points="${t.join(" ")}" fill="rgb(${v},${v},${v})"/>`;
+    });
+  }
+  const facets = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">` +
+    `<g stroke="#fff" stroke-width=".9" stroke-opacity=".85" stroke-linejoin="round">${tris}</g></svg>`;
+  const shine = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">` +
+    `<defs><linearGradient id="s" x1="0" y1="0" x2="1" y2="1">` +
+    `<stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".75"/>` +
+    `<stop offset=".65" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>` +
+    `<rect width="100" height="100" fill="url(#s)"/></svg>`;
+  const uri = svg => "data:image/svg+xml," + encodeURIComponent(svg);
+  document.getElementById("tera-facets").setAttribute("href", uri(facets));
+  document.getElementById("tera-shine").setAttribute("href", uri(shine));
+})();
+
 function teraTransform() {
   if (battle.over || battle.busy || battle.teraUsed || !battle.teraAvailable) return;
   me().teraCharge = false;
@@ -1316,6 +1413,7 @@ function teraTransform() {
   const colors = TYPE_COLORS[battle.mine.type] || ["#7df9ff", "#b388ff"];
   box.style.setProperty("--tera-color", colors[0]);
   box.style.setProperty("--tera-color2", colors[1]);
+  document.getElementById("tera-flood").setAttribute("flood-color", colors[0]);
   setMsg(`✨ ${battle.mine.name} Terastallized! ✨`);
   box.classList.add("tera-in");
   setTimeout(() => {

@@ -12,9 +12,11 @@ self-contained HTML file, no install, no build step.
 - **Catch** 🌿 — click rustling grass, throw a Pokeball, build your collection.
   Rare Pokemon (Charizard, Mew, Snorlax...) appear occasionally.
 - **Battle** ⚔️ — turn-based battles with typed moves, kid-favored difficulty,
-  and no penalties for losing. Once per battle you can **Terastallize** 💎 for
-  a crystal transformation and boosted moves, and Pokemon with a Mega form can
-  also **Mega Evolve** ⚡ mid-battle for an extra power boost.
+  and no penalties for losing. Win twice with a Pokemon to evolve it, one
+  stage at a time (Dratini → Dragonair → Dragonite). Once per battle you can
+  **Terastallize** 💎: your Pokemon turns to shining crystal in its type color,
+  wears a gem crown, and gets boosted moves. Pokemon with a Mega form can also
+  **Mega Evolve** ⚡ mid-battle for an extra power boost.
 - **Match** 🎴 — memory pairs using the Pokemon you've caught, in small (easy)
   or big grids.
 - **Pokedex** 📕 — everything you've caught, with duplicate badges. Tap a Pokemon for its type, a fun fact, its real size, and its evolution chain. Some
